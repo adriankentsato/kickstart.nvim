@@ -22,3 +22,5 @@ vim.opt.scrolloff = 8 -- Do not go down/up without at least 8 chars from the bot
 vim.opt.updatetime = 50
 
 vim.opt.colorcolumn = '80' -- Set a 80 chars boundary
+
+require 'kent.term'
