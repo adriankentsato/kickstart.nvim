@@ -80,7 +80,7 @@ vim.api.nvim_create_user_command('Floaterminal', open_term, { nargs = '?' })
 -- Set up keymappings
 vim.keymap.set({ 'n', 't' }, '<C-t><C-t>', function()
   open_term { args = '1' }
-end, { silent = true })
+end, { silent = true, desc = 'Open/Close Terminal' })
 
 vim.keymap.set('t', '<esc><esc>', '<c-\\><c-n>:Floaterminal -1<CR>', { silent = true })
 
@@ -88,5 +88,5 @@ for i = 1, 9 do
   vim.keymap.set('n', string.format('<C-t>%d', i), function()
     vim.cmd 'stopinsert'
     open_term { args = string.format('%s', (i or '')) }
-  end, { silent = true, desc })
+  end, { silent = true, desc = string.format('Open Terminal %d', i) })
 end
