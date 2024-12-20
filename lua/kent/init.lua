@@ -21,6 +21,17 @@ vim.opt.scrolloff = 8 -- Do not go down/up without at least 8 chars from the bot
 
 vim.opt.updatetime = 50
 
-vim.opt.colorcolumn = '80' -- Set a 80 chars boundary
+vim.opt.colorcolumn = '80,120' -- Set a 80 chars boundary
+
+vim.opt.scrolloff = 10
+
+vim.opt.swapfile = false
+vim.opt.backup = false
+
+vim.keymap.set('n', '<C-d>', '<C-d>zz')
+vim.keymap.set('n', '<C-u>', '<C-u>zz')
+
+vim.keymap.set('x', '<leader>p', '"_dP')
+vim.keymap.set('n', '<leader>pv', vim.cmd.Ex)
 
 require 'kent.term'
