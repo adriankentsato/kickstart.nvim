@@ -1,112 +1,92 @@
--- Terminal Management Configuration
--- Place this in your init.lua or in lua/terminal.lua and require it
-
--- Variables to store terminal buffers
 local terminals = {}
+local current_term = nil
 
--- Function to create window title
-local function get_terminal_title(number)
-  return ' Terminal ' .. number .. ' '
+local function open_floating_window(opts)
+  opts = opts or {}
+  local width = opts.width or math.floor(vim.o.columns * 0.8)
+  local height = opts.height or math.floor(vim.o.lines * 0.8)
+
+  local col = math.floor((vim.o.columns - width) / 2)
+  local row = math.floor((vim.o.lines - height) / 2)
+
+  local buf = nil
+  local title = nil
+
+  if opts.buf and vim.api.nvim_buf_is_valid(opts.buf) then
+    buf = opts.buf
+  else
+    buf = vim.api.nvim_create_buf(false, true)
+  end
+
+  if opts.index then
+    title = ' Terminal ' .. opts.index .. ' '
+  else
+    title = ' Terminal '
+  end
+
+  local win_config = {
+    relative = 'editor',
+    width = width,
+    height = height,
+    col = col,
+    row = row,
+    style = 'minimal',
+    border = 'rounded',
+    title = title,
+    title_pos = 'center',
+  }
+
+  local win = vim.api.nvim_open_win(buf, true, win_config)
+
+  return { buf = buf, win = win }
 end
 
--- Function to close terminal window
-function Close_terminal_window()
-  local win = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_hide(win)
-end
+local function open_term(opts)
+  local index = opts.args ~= '' and tonumber(opts.args) or 1
+  local current = terminals[index] or {
+    buf = -1,
+    win = -1,
+  }
 
--- Function to create a new terminal or toggle existing one
-local function create_or_toggle_terminal(terminal_number)
-  local target_terminal = terminal_number or 1
+  print(current_term, index)
 
-  if terminals[target_terminal] and vim.api.nvim_buf_is_valid(terminals[target_terminal]) then
-    local win = vim.fn.bufwinnr(terminals[target_terminal])
-    if win ~= -1 then
-      -- Terminal is visible, hide it
-      vim.cmd(win .. 'hide')
+  if current_term ~= nil and current_term > 0 and vim.api.nvim_win_is_valid(terminals[current_term].win) then
+    -- If the current terminal is not the index then we will close it
+    vim.api.nvim_win_hide(terminals[current_term].win)
+  end
+
+  if index > 0 and current_term == nil then
+    -- Check if the current window is already up
+    if vim.api.nvim_win_is_valid(current.win) then
+      vim.api.nvim_win_hide(current.win) -- Close that window
+      current_term = nil
     else
-      -- Terminal exists but is hidden, show it
-      local buf = terminals[target_terminal]
-      -- Create new window with rounded borders
-      local win_opts = {
-        relative = 'editor',
-        style = 'minimal',
-        border = 'rounded',
-        width = math.floor(vim.o.columns * 0.8),
-        height = 15,
-        row = vim.o.lines - 18,
-        col = math.floor(vim.o.columns * 0.1),
-        title = get_terminal_title(target_terminal),
-        title_pos = 'center',
-      }
-      local win = vim.api.nvim_open_win(buf, true, win_opts)
+      -- We'll create a new window with the buffer if available
+      terminals[index] = open_floating_window { buf = current.buf, index = index }
+      current_term = index
+
+      if vim.bo[terminals[index].buf].buftype ~= 'terminal' then
+        vim.cmd.terminal()
+      end
       vim.cmd 'startinsert'
     end
   else
-    -- Create new terminal
-    local buf = vim.api.nvim_create_buf(false, true)
-    local win_opts = {
-      relative = 'editor',
-      style = 'minimal',
-      border = 'rounded',
-      width = math.floor(vim.o.columns * 0.8),
-      height = 15,
-      row = vim.o.lines - 18,
-      col = math.floor(vim.o.columns * 0.1),
-      title = get_terminal_title(target_terminal),
-      title_pos = 'center',
-    }
-    local win = vim.api.nvim_open_win(buf, true, win_opts)
-    vim.fn.termopen(vim.o.shell)
-    terminals[target_terminal] = buf
-    vim.cmd 'startinsert'
+    current_term = nil
   end
 end
 
+vim.api.nvim_create_user_command('Floaterminal', open_term, { nargs = '?' })
+
 -- Set up keymappings
-vim.keymap.set('n', '<C-t><C-t>', function()
-  create_or_toggle_terminal()
-end, { silent = true })
-vim.keymap.set('t', '<C-t><C-t>', function()
-  vim.cmd 'stopinsert'
-  Close_terminal_window()
+vim.keymap.set({ 'n', 't' }, '<C-t><C-t>', function()
+  open_term { args = '1' }
 end, { silent = true })
 
--- Set up number keybindings (1-9)
+vim.keymap.set('t', '<esc><esc>', '<c-\\><c-n>:Floaterminal -1<CR>', { silent = true })
+
 for i = 1, 9 do
   vim.keymap.set('n', string.format('<C-t>%d', i), function()
-    create_or_toggle_terminal(i)
-  end, { silent = true })
-  vim.keymap.set('t', string.format('<C-t>%d', i), function()
     vim.cmd 'stopinsert'
-    create_or_toggle_terminal(i)
-  end, { silent = true })
+    open_term { args = string.format('%s', (i or '')) }
+  end, { silent = true, desc })
 end
-
--- Terminal-specific settings
-vim.cmd [[
-    augroup TerminalSettings
-        autocmd!
-        " Enable insert mode when entering terminal
-        autocmd TermOpen * startinsert
-        " Disable line numbers in terminal
-        autocmd TermOpen * setlocal nonumber norelativenumber
-        " Keep terminal buffer when closing window
-        autocmd TermOpen * setlocal bufhidden=hide
-    augroup END
-]]
-
--- Set up terminal keybindings
-vim.api.nvim_create_autocmd('TermOpen', {
-  pattern = '*',
-  callback = function()
-    -- Map Esc to exit terminal mode and close window
-    vim.api.nvim_buf_set_keymap(0, 't', '<Esc>', '<C-\\><C-n>:lua Close_terminal_window()<CR>', { noremap = true, silent = true })
-    vim.api.nvim_buf_set_keymap(0, 't', '<Esc><Esc>', '<C-\\><C-n>:lua Close_terminal_window()<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- Optional: Add highlight group for terminal window
-vim.cmd [[
-    highlight FloatBorder guifg=#80a0ff
-]]
