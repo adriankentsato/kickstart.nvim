@@ -19,9 +19,9 @@ local function open_floating_window(opts)
   end
 
   if opts.index then
-    title = ' Terminal ' .. opts.index .. ' '
+    title = " Kent's Terminal #" .. opts.index .. ' '
   else
-    title = ' Terminal '
+    title = " Kent's Terminal "
   end
 
   local win_config = {
@@ -48,8 +48,6 @@ local function open_term(opts)
     win = -1,
   }
 
-  print(current_term, index)
-
   if current_term ~= nil and current_term > 0 and vim.api.nvim_win_is_valid(terminals[current_term].win) then
     -- If the current terminal is not the index then we will close it
     vim.api.nvim_win_hide(terminals[current_term].win)
@@ -75,14 +73,14 @@ local function open_term(opts)
   end
 end
 
-vim.api.nvim_create_user_command('Floaterminal', open_term, { nargs = '?' })
+vim.api.nvim_create_user_command('Kenterminal', open_term, { nargs = '?' })
 
 -- Set up keymappings
 vim.keymap.set({ 'n', 't' }, '<C-t><C-t>', function()
   open_term { args = '1' }
 end, { silent = true, desc = 'Open/Close Terminal' })
 
-vim.keymap.set('t', '<esc><esc>', '<c-\\><c-n>:Floaterminal -1<CR>', { silent = true })
+vim.keymap.set('t', '<esc><esc>', '<c-\\><c-n>:Kenterminal -1<CR>', { silent = true })
 
 for i = 1, 9 do
   vim.keymap.set('n', string.format('<C-t>%d', i), function()
